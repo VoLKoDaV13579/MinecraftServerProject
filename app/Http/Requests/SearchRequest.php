@@ -4,9 +4,6 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-namespace App\Http\Requests\Users;
-
-use Illuminate\Foundation\Http\FormRequest;
 
 class SearchRequest extends FormRequest
 {

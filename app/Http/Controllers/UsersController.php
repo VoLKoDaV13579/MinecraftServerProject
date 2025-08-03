@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\UserNotFoundException;
-use App\Http\Requests\Users\IndexRequest;
-use App\Http\Requests\Users\SearchRequest;
+use App\Http\Requests\IndexRequest;
+use App\Http\Requests\SearchRequest;
 use App\Http\Resources\PublicUserResource;
 use App\Http\Resources\UserCollection;
 use App\Repositories\AuthMeUserRepository;
