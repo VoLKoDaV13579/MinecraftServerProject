@@ -2,14 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Exceptions\UserNotFoundException;
 use App\Http\Requests\Users\IndexRequest;
 use App\Http\Requests\Users\SearchRequest;
-use App\Http\Resources\UserResource;
-use App\Http\Resources\UserCollection;
 use App\Http\Resources\PublicUserResource;
+use App\Http\Resources\UserCollection;
 use App\Repositories\AuthMeUserRepository;
-use App\Exceptions\UserNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

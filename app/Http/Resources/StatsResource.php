@@ -10,19 +10,19 @@ class StatsResource extends JsonResource
     {
         return [
             'server' => [
-                'total_users' => $this->resource['total_users'],
-                'online_users' => $this->resource['online_users'],
-                'registered_today' => $this->resource['registered_today'],
-                'registered_this_week' => $this->resource['registered_this_week'],
-                'registered_this_month' => $this->resource['registered_this_month'],
+                'total_users' => $this->resource['total_users'] ?? 0,
+                'online_users' => $this->resource['online_users'] ?? 0,
+                'registered_today' => $this->resource['registered_today'] ?? 0,
+                'registered_this_week' => $this->resource['registered_this_week'] ?? 0,
+                'registered_this_month' => $this->resource['registered_this_month'] ?? 0,
             ],
             'worlds' => $this->when(
                 isset($this->resource['worlds']),
-                $this->resource['worlds']
+                $this->resource['worlds'] ?? 0
             ),
             'registration_chart' => $this->when(
                 isset($this->resource['registration_chart']),
-                $this->resource['registration_chart']
+                $this->resource['registration_chart'] ?? 0
             ),
         ];
     }

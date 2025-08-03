@@ -2,10 +2,9 @@
 
 namespace App\Services;
 
+use App\Exceptions\AuthMeAuthException;
 use App\Models\AuthMeUser;
 use App\Repositories\AuthMeUserRepository;
-use App\Services\AuthMePasswordService;
-use App\Exceptions\AuthMeAuthException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 

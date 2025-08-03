@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use App\Models\AuthMeUser;
-use App\Providers\AuthMeUserProvider;
 use App\Repositories\AuthMeUserRepository;
 use App\Services\AuthMeAuthService;
 use App\Services\AuthMePasswordService;
@@ -18,9 +17,12 @@ class AuthMeServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Регистрируем сервисы как синглтоны
+        // Явная регистрация репозитория
+        $this->app->singleton(AuthMeUserRepository::class, function ($app) {
+            return new AuthMeUserRepository();
+        });
+
         $this->app->singleton(AuthMePasswordService::class);
-        $this->app->singleton(AuthMeUserRepository::class);
 
         $this->app->singleton(AuthMeAuthService::class, function ($app) {
             return new AuthMeAuthService(
@@ -41,10 +43,11 @@ class AuthMeServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // ВАЖНО: Регистрируем кастомный user provider
+        // Регистрируем кастомный user provider
         Auth::provider('authme', function ($app, array $config) {
             return new AuthMeUserProvider(
-                $app->make(AuthMePasswordService::class)
+                $app->make(AuthMePasswordService::class),
+                $config['model'] ?? AuthMeUser::class // Добавляем поддержку конфигурации модели
             );
         });
     }
