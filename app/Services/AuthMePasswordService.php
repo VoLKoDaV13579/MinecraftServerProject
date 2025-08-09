@@ -10,8 +10,7 @@ class AuthMePasswordService
     public function hash(string $password, string $username): string
     {
         $salt = hash('sha256', strtolower($username));
-        $hash = hash('sha256', hash('sha256', $password) . $salt);
-
+        $hash = hash('sha256', $password . $salt); // Исправлено: убрано двойное хеширование пароля
         return '$SHA$' . $hash;
     }
 
@@ -20,7 +19,7 @@ class AuthMePasswordService
      */
     public function verify(string $password, string $hashedPassword, string $username): bool
     {
-        return $this->hash($password, $username) === $hashedPassword;
+        return hash_equals($this->hash($password, $username), $hashedPassword); // Защита от timing attacks
     }
 
     /**
@@ -28,7 +27,13 @@ class AuthMePasswordService
      */
     public function isValidHash(string $hash): bool
     {
-        return str_starts_with($hash, '$SHA$') && strlen($hash) === 68;
+        if (!str_starts_with($hash, '$SHA$') || strlen($hash) !== 69) {
+            return false;
+        }
+
+        // Проверяем, что часть после '$SHA$' содержит только hex-символы
+        $hashPart = substr($hash, 5);
+        return ctype_xdigit($hashPart);
     }
 
     /**
@@ -36,11 +41,16 @@ class AuthMePasswordService
      */
     public function generateRandomPassword(int $length = 12): string
     {
+        if ($length < 4) {
+            throw new \InvalidArgumentException('Длина пароля должна быть не менее 4 символов');
+        }
+
         $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
         $password = '';
+        $charactersLength = strlen($characters);
 
         for ($i = 0; $i < $length; $i++) {
-            $password .= $characters[random_int(0, strlen($characters) - 1)];
+            $password .= $characters[random_int(0, $charactersLength - 1)];
         }
 
         return $password;

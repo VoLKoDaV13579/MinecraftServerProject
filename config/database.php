@@ -131,6 +131,20 @@ return [
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
+
+        'testing' => [
+            'driver' => 'mysql',
+            'host' => env('DB_HOST', '192.168.191.239'),
+            'port' => env('DB_PORT', '3306'),
+            'database' => env('DB_DATABASE', 'authme_test'),
+            'username' => env('DB_USERNAME', 'authme_user'),
+            'password' => env('DB_PASSWORD', 'qwerty'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => true,
+            'engine' => null,
+        ],
     ],
 
     /*

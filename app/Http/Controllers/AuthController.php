@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Exceptions\AuthMeAuthException;
+use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\UpdateProfileRequest;
-use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Resources\UserResource;
 use App\Services\AuthMeAuthService;
-use App\Exceptions\AuthMeAuthException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 
 class AuthController extends Controller
@@ -31,10 +31,15 @@ class AuthController extends Controller
                 'user' => new UserResource($user),
                 'message' => 'Пользователь успешно зарегистрирован'
             ], 201);
-
         } catch (AuthMeAuthException $e) {
             return $this->errorResponse($e->getMessage(), $e->getStatusCode());
         } catch (\Exception $e) {
+            // Логируем системные ошибки
+            Log::error('Registration error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->except(['password', 'password_confirmation'])
+            ]);
+
             return $this->errorResponse('Ошибка при регистрации', 500);
         }
     }
@@ -55,16 +60,23 @@ class AuthController extends Controller
                 'expires_in' => config('sanctum.expiration', 43200),
                 'message' => 'Успешная авторизация'
             ]);
-
         } catch (AuthMeAuthException $e) {
             RateLimiter::hit($request->throttleKey());
             return $this->errorResponse($e->getMessage(), $e->getStatusCode());
+        } catch (\Exception $e) {
+            RateLimiter::hit($request->throttleKey());
+            Log::error('Login error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'email' => $request->input('email')
+            ]);
+
+            return $this->errorResponse('Ошибка при входе в систему', 500);
         }
     }
 
     public function me(Request $request): JsonResponse
     {
-        return $this->successResponse([
+        return $this->dataResponse([
             'user' => new UserResource($request->user())
         ]);
     }
@@ -81,10 +93,14 @@ class AuthController extends Controller
                 'user' => new UserResource($user),
                 'message' => 'Профиль успешно обновлен'
             ]);
-
         } catch (AuthMeAuthException $e) {
             return $this->errorResponse($e->getMessage(), $e->getStatusCode());
         } catch (\Exception $e) {
+            Log::error('Profile update error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $request->user()?->id
+            ]);
+
             return $this->errorResponse('Ошибка при обновлении профиля', 500);
         }
     }
@@ -92,48 +108,95 @@ class AuthController extends Controller
     public function changePassword(ChangePasswordRequest $request): JsonResponse
     {
         try {
+            $validatedData = $request->validated();
+
             $this->authService->changePassword(
                 $request->user(),
-                $request->validated()['current_password'],
-                $request->validated()['password']
+                $validatedData['current_password'],
+                $validatedData['password']
             );
 
+            // Удаляем все токены пользователя
             $request->user()->tokens()->delete();
 
             return $this->successResponse([
                 'message' => 'Пароль успешно изменен. Выполните вход заново.'
             ]);
-
         } catch (AuthMeAuthException $e) {
             return $this->errorResponse($e->getMessage(), $e->getStatusCode());
+        } catch (\Exception $e) {
+            Log::error('Password change error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $request->user()?->id
+            ]);
+
+            return $this->errorResponse('Ошибка при изменении пароля', 500);
         }
     }
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        try {
+            $token = $request->user()->currentAccessToken();
 
-        return $this->successResponse([
-            'message' => 'Успешный выход из системы'
-        ]);
+            if ($token) {
+                $token->delete();
+            }
+
+            return $this->successResponse([
+                'message' => 'Успешный выход из системы'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Logout error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $request->user()?->id
+            ]);
+
+            return $this->errorResponse('Ошибка при выходе из системы', 500);
+        }
     }
 
     public function logoutAll(Request $request): JsonResponse
     {
-        $request->user()->tokens()->delete();
+        try {
+            $request->user()->tokens()->delete();
 
-        return $this->successResponse([
-            'message' => 'Выход выполнен на всех устройствах'
-        ]);
+            return $this->successResponse([
+                'message' => 'Выход выполнен на всех устройствах'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('LogoutAll error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $request->user()?->id
+            ]);
+
+            return $this->errorResponse('Ошибка при выходе из всех устройств', 500);
+        }
     }
 
     public function checkToken(Request $request): JsonResponse
     {
-        return $this->successResponse([
-            'valid' => true,
-            'user' => new UserResource($request->user()),
-            'token_name' => $request->user()->currentAccessToken()->name,
-            'expires_at' => $request->user()->currentAccessToken()->expires_at
-        ]);
+        try {
+            $user = $request->user();
+            $token = $user->currentAccessToken();
+
+            if (!$token) {
+                return $this->errorResponse('Токен не найден', 401);
+            }
+
+            return $this->successResponse([
+                'valid' => true,
+                'user' => new UserResource($user),
+                'token_name' => $token->name,
+                'expires_at' => $token->expires_at
+            ]);
+        } catch (\Exception $e) {
+            Log::error('CheckToken error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $request->user()?->id
+            ]);
+
+            return $this->errorResponse('Ошибка при проверке токена', 500);
+        }
     }
 }

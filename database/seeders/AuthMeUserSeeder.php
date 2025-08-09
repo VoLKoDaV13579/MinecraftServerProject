@@ -11,7 +11,7 @@ class AuthMeUserSeeder extends Seeder
     {
         // Создаем тестового администратора
         AuthMeUser::factory()->create([
-            'username' => 'admin2',
+            'username' => 'admin',
             'realname' => 'Administrator',
             'email' => 'admin@example.com',
             'isLogged' => true
@@ -19,14 +19,14 @@ class AuthMeUserSeeder extends Seeder
 
         // Создаем тестового пользователя
         AuthMeUser::factory()->withPassword('password123')->create([
-            'username' => 'testuser2',
+            'username' => 'testuser',
             'realname' => 'Test User',
             'email' => 'test@example.com',
             'isLogged' => false
         ]);
 
         // Создаем случайных пользователей
-        AuthMeUser::factory(5000)->create();
+        AuthMeUser::factory(500)->create();
 
         // Создаем онлайн пользователей
         AuthMeUser::factory(100)->online()->create();

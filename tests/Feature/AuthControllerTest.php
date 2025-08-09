@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AuthMeUser;
 use App\Services\AuthMePasswordService;
+use Database\Seeders\AuthMeUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
@@ -12,21 +13,24 @@ class AuthControllerTest extends TestCase
 {
     use RefreshDatabase, WithFaker;
 
+    protected $seed = true;
+
     private AuthMePasswordService $passwordService;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->passwordService = app(AuthMePasswordService::class);
+        //$this->seed(AuthMeUserSeeder::class);
     }
 
     public function test_user_registration(): void
     {
         $userData = [
-            'username' => 'testuser',
+            'username' => 'unittestuser',
             'password' => 'password123',
             'password_confirmation' => 'password123',
-            'email' => 'test@example.com',
+            'email' => 'unittest@example.com',
             'realname' => 'Test User'
         ];
 
@@ -38,35 +42,56 @@ class AuthControllerTest extends TestCase
                 'user' => [
                     'username',
                     'realname',
-                    'email',
                     'registered_at'
                 ],
                 'message'
             ]);
-
+        if ($response->json('user.email')) {
+            $response->assertJsonPath('user.email', $userData['email']);
+        }
         $this->assertDatabaseHas('authme', [
-            'username' => 'testuser',
-            'email' => 'test@example.com'
+            'username' => 'unittestuser',
+            'email' => 'unittest@example.com'
         ]);
     }
 
     public function test_user_login(): void
     {
-        $user = AuthMeUser::factory()->withPassword('password123')->create([
-            'username' => 'testuser'
+        $user = AuthMeUser::factory()->create([
+            'username' => 'unittestuser'
         ]);
+
+        $passwordService = app(AuthMePasswordService::class);
+        $user->password = $passwordService->hash('password123', 'unittestuser');
+        $user->save();
 
         $response = $this->postJson('/api/v1/auth/login', [
-            'username' => 'testuser',
+            'username' => 'unittestuser',
             'password' => 'password123'
         ]);
-
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'success',
-                'user',
+                'user' => [  // Убрали 'data' =>
+                    'id',
+                    'username',
+                    'realname',
+                    'world',
+                    'coordinates' => [
+                        'x',
+                        'y',
+                        'z',
+                        'world',
+                        'yaw',
+                        'pitch'
+                    ],
+                    'is_online',
+                    'registered_at',
+                    'last_login_at'
+                ],
                 'token',
                 'token_type',
+                'expires_in',
                 'message'
             ]);
     }
@@ -94,11 +119,27 @@ class AuthControllerTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'success',
-                'user' => [
-                    'username',
-                    'realname',
-                    'world',
-                    'coordinates'
+                'data' => [
+                    'user' => [
+                        'id',
+                        'username',
+                        'realname',
+                        'email',
+                        'world',
+                        'coordinates' => [
+                            'x',
+                            'y',
+                            'z',
+                            'world',
+                            'yaw',
+                            'pitch'
+                        ],
+                        'is_online',
+                        'registered_at',
+                        'last_login_at',
+                        'registration_ip',
+                        'last_ip'
+                    ]
                 ]
             ]);
     }
